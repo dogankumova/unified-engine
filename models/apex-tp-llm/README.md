@@ -347,7 +347,15 @@ Patch for [aptop](https://github.com/celikomer/aptop), an nvtop-like monitor for
 
 > On this Xeon, PyTorch's multi-threaded paths can use a CPU instruction the processor lacks. All scripts run with `torch.set_num_threads(1)`.
 
-### 1. xdma driver and host tuning
+### 1. Get the code
+
+The branch `5-Apex-fpga` is the vendor runtime (matching firmware `a4fba9d9`) with this project in `models/apex-tp-llm/`:
+
+```bash
+git clone -b 5-Apex-fpga https://github.com/dogankumova/unified-engine.git ~/unified-engine
+```
+
+### 2. xdma driver and host tuning
 
 ```bash
 git clone https://github.com/Xilinx/dma_ip_drivers.git ~/dma_ip_drivers
@@ -360,12 +368,9 @@ sudo systemctl daemon-reload && sudo systemctl enable --now apex-tune xdma
 ls /dev/xdma*_h2c_0          # one line per card
 ```
 
-### 2. Runtime
-
-The branch `5-Apex-fpga` is the vendor runtime (matching firmware `a4fba9d9`) with this project in `models/apex-tp-llm/`:
+### 3. Patched model port
 
 ```bash
-git clone -b 5-Apex-fpga https://github.com/dogankumova/unified-engine.git ~/unified-engine
 cd ~/unified-engine/models/apex-tp-llm
 export APEX_TP_WORK=~/apex_tp APEX_TP_CPUS=8,9,10,11,12,13
 
@@ -374,7 +379,7 @@ python port_build.py --name q35_9b --cfg9b silu kpad attn1 noeye heads shard rec
 python port_build.py --name q38_27b --hfcfg <Qwen3.8-27B dir>/config.json silu kpad attn1 noeye heads shard recgrp tp abfuse vtshare membase cardsum dynlen ctx16k if4mix
 ```
 
-### 3. Models and slicing
+### 4. Models and slicing
 
 Place the Hugging Face model directories under `$APEX_TP_WORK/models/<name>/qwen3.5_2b_bin/<Model>/` (a symlink is enough). For GPT‑OSS, point `GPTOSS_MODEL` at the model directory.
 
@@ -387,7 +392,7 @@ APEX_Q4=fp4 Q_MODEL=q38_27b python extract_tp.py 10 fp4      # -> $APEX_TP_WORK/
 GPTOSS_MODEL=<gpt-oss-20b dir> python extract_gptoss.py 10   # -> $APEX_TP_WORK/models/gptoss20b/tp10
 ```
 
-### 4. OllApeX service
+### 5. OllApeX service
 
 ```bash
 sed "s/USER/$USER/g" system/ollapex.service | sudo tee /etc/systemd/system/ollapex.service

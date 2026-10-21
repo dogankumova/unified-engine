@@ -333,6 +333,7 @@ Patch for [aptop](https://github.com/celikomer/aptop), an nvtop-like monitor for
 | `tools/bench_pcie.py`, `tools/bench_dmalat.py`, `tools/bench_dmaconc.py` | PCIe/DMA latency, one card and all 5 at once |
 | `tools/bench_2eng.py` | Memory bandwidth of the two engines |
 | `tools/quant_compare.py` | SQNR of the quantization formats |
+| `tools/download_models.py` | Downloads the Hugging Face checkpoints into the places the slicing scripts read |
 | `run_tp.py --eval-file` | Teacher-forced top‑1 accuracy on the cards |
 
 ---
@@ -384,6 +385,8 @@ python port_build.py --name q38_27b --hfcfg <Qwen3.8-27B dir>/config.json silu k
 Place the Hugging Face model directories under `$APEX_TP_WORK/models/<name>/qwen3.5_2b_bin/<Model>/` (a symlink is enough). For GPT‑OSS, point `GPTOSS_MODEL` at the model directory.
 
 ```bash
+python tools/download_models.py all            # the Hugging Face checkpoints, into the places below
+
 # Qwen: 10 slices (5 cards x 2 engines), FP4
 APEX_Q4=fp4 Q_MODEL=q35_9b  python extract_tp.py 10 fp4      # -> $APEX_TP_WORK/models/q35_9b/tp10fp4
 APEX_Q4=fp4 Q_MODEL=q38_27b python extract_tp.py 10 fp4      # -> $APEX_TP_WORK/models/q38_27b/tp10fp4

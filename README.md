@@ -271,7 +271,7 @@ flowchart LR
 | **Host** | xdma driver for kernel 7.0, poll mode, `apex-tune` (performance governor, no deep C-states), CPU placement, systemd boot order | All 5 cards up at boot; ~10 µs per small DMA |
 | **Qwen runtime** | Slicing every layer over 10 slices, sums on the cards, two engines on separate DDR channels, on-card pre-sum, dynamic attention length, 16K context, FP4 | 9B: 3.2 → 6.97 tokens/s; 27B: 2.39 tokens/s |
 | **GPT‑OSS‑20B port** | New card program: MXFP4 → FP4, attention sinks, sliding window, YaRN, clamped SwiGLU, experts as precompiled subroutines picked through registers, card-local top‑4 pick, batched attention | 11.3 → 15.3 tokens/s |
-| **OllApeX** | Web chat UI, model and context choice, files, images (Qwen), sampling, harmony format for GPT‑OSS (thinking / answer), live technical panel, systemd service | Use from any browser on port 3000 |
+| **OllApeX** | Web chat UI, model and context choice, files, images (Qwen), sampling, harmony format for GPT‑OSS (thinking / answer), math typesetting (KaTeX), live technical panel, systemd service | Use from any browser on port 3000 |
 | **aptop** | Multi-card grid, live OllApeX state (model, phase, memory per card) | Monitor all cards in a terminal |
 | **Tools** | Reference tests, step profilers, PCIe/DMA and memory benchmarks, quantization comparison | Every number in this README is reproducible |
 

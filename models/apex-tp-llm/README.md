@@ -309,6 +309,7 @@ On an 8-head slice the card time of attention went from 691 µs to 435 µs per l
   - Image input for the Qwen models; the vision encoder runs on a card.
   - Live technical panel: cards, links, speed, power estimate.
 - **gpt-oss:20b:** harmony chat template. The model's analysis is shown as "thinking" and its answer as normal text. The "think" switch sets the reasoning effort (low / medium).
+- **Math:** formulas in replies (`\[ … \]`, `$$ … $$`, `\( … \)`, `$ … $`) are typeset with [KaTeX](https://katex.org) 0.16.11, served from `ollapex/static/katex` (MIT license), so no internet access is needed. Markdown tables and horizontal rules are rendered too.
 - **Sampling:** greedy or temperature / top‑k / top‑p. Every engine reports its best 4 tokens through the hardware argmax, and the host picks among the overall best candidates.
 - Replies are limited to 1024 tokens by default.
 - For the Qwen models, the part of the previous conversation already held on the cards is reused; only the new message is read.

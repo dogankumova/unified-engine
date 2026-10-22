@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OllApeX</title>
 <link rel="icon" href="/static/ollapex-mark.svg">
+<link rel="stylesheet" href="/static/katex/katex.min.css">
+<script src="/static/katex/katex.min.js"></script>
 <style>
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --ink: #141a22; --mute: #5d6878; --line: #e2e6ec; --soft: #eef1f5;
@@ -97,6 +99,14 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
 details.raw summary { cursor: pointer; color: var(--mute); font-size: 12px; margin-top: 14px; }
 details.raw pre { font: 11px/1.4 var(--mono); background: var(--soft); padding: 8px; border-radius: 8px; overflow-x: auto; max-height: 320px; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; } }
+
+.bubble .mathblock { overflow-x: auto; overflow-y: hidden; margin: 6px 0 8px; }
+.bubble .katex-display { margin: 0; }
+.bubble .katex { font-size: 1.08em; }
+.bubble hr { border: 0; border-top: 1px solid var(--line, rgba(127,127,127,.3)); margin: 10px 0; }
+.bubble table.md { border-collapse: collapse; margin: 6px 0 8px; font-size: .95em; display: block; overflow-x: auto; }
+.bubble table.md th, .bubble table.md td { border: 1px solid var(--line, rgba(127,127,127,.3)); padding: 4px 8px; text-align: left; }
+.bubble table.md th { background: var(--soft); }
 </style>
 </head>
 <body>
@@ -212,24 +222,52 @@ function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 function inline(s) {
   return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
 }
+function tex(src, display) {
+  if (typeof katex === "undefined") return esc(display ? "\\[" + src + "\\]" : "\\(" + src + "\\)");
+  try { return katex.renderToString(src, { displayMode: display, throwOnError: false, output: "html", strict: "ignore" }); }
+  catch (e) { return esc(src); }
+}
 function md(src) {
+  // math is cut out first (rendered by KaTeX, kept as placeholders), so the markdown rules never touch it
+  const math = [];
+  const keep = (tx, display) => { math.push(tex(tx, display)); return display ? "\n\u0001D" + (math.length - 1) + "\u0002\n" : "\u0001I" + (math.length - 1) + "\u0002"; };
+  const pullMath = s => s
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_, x) => keep(x, true))
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, x) => keep(x, true))
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, x) => keep(x, false))
+    .replace(/(^|[^\\$\w])\$([^\s$](?:[^$\n]*?[^\s$])?)\$(?![\w$])/g, (_, pre, x) => pre + keep(x, false));
   const out = []; let list = null, para = [];
   const flushP = () => { if (para.length) { out.push("<p>" + para.join("<br>") + "</p>"); para = []; } };
   const flushL = () => { if (list) { out.push("</" + list + ">"); list = null; } };
+  const row = l => /^\s*\|.*\|\s*$/.test(l);
+  const rule = l => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(l);
+  const cells = l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => inline(c.trim()));
   const parts = src.split(/```/);
   parts.forEach((part, i) => {
     if (i % 2) { flushP(); flushL(); out.push("<pre><code>" + esc(part.replace(/^[a-zA-Z0-9_+-]*\n/, "")) + "</code></pre>"); return; }
-    part.split("\n").forEach(line => {
+    const lines = pullMath(part).split("\n");
+    for (let j = 0; j < lines.length; j++) {
+      const line = lines[j];
       let m;
-      if ((m = line.match(/^(#{1,6})\s+(.*)$/))) { flushP(); flushL(); out.push((m[1].length <= 2 ? "<h3>" : "<h4>") + inline(m[2]) + (m[1].length <= 2 ? "</h3>" : "</h4>")); }
+      if ((m = line.match(/^\s*\u0001D(\d+)\u0002\s*$/))) { flushP(); flushL(); out.push('<div class="mathblock">\u0001D' + m[1] + "\u0002</div>"); }
+      else if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { flushP(); flushL(); out.push("<hr>"); }
+      else if (row(line) && j + 1 < lines.length && rule(lines[j + 1])) {
+        flushP(); flushL();
+        let h = '<table class="md"><thead><tr>' + cells(line).map(c => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>";
+        j += 2;
+        while (j < lines.length && row(lines[j])) { h += "<tr>" + cells(lines[j]).map(c => "<td>" + c + "</td>").join("") + "</tr>"; j++; }
+        j--;
+        out.push(h + "</tbody></table>");
+      }
+      else if ((m = line.match(/^(#{1,6})\s+(.*)$/))) { flushP(); flushL(); out.push((m[1].length <= 2 ? "<h3>" : "<h4>") + inline(m[2]) + (m[1].length <= 2 ? "</h3>" : "</h4>")); }
       else if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (list !== "ul") { flushL(); out.push("<ul>"); list = "ul"; } out.push("<li>" + inline(m[1]) + "</li>"); }
       else if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) { flushP(); if (list !== "ol") { flushL(); out.push("<ol>"); list = "ol"; } out.push("<li>" + inline(m[1]) + "</li>"); }
       else if (!line.trim()) { flushP(); flushL(); }
       else { flushL(); para.push(inline(line)); }
-    });
+    }
   });
   flushP(); flushL();
-  return out.join("");
+  return out.join("").replace(/\u0001[DI](\d+)\u0002/g, (_, n) => math[+n]);
 }
 
 function addMsg(role, text) {
